@@ -413,21 +413,7 @@ def fetch_weather(lat: float, lon: float) -> Dict:
 # MAP
 # ─────────────────────────────────────────────────────────
 def build_kerala_map(predictions: Optional[Dict] = None, selected_district: str = "Kollam") -> folium.Map:
-    m = folium.Map(location=[KOLLAM_LAT, KOLLAM_LON], zoom_start=8, tiles=None)
-
-    folium.TileLayer(
-        tiles=(
-            "https://bhuvan-vec2.nrsc.gov.in/bhuvan/gwc/service/wms?"
-            "service=WMS&version=1.1.1&request=GetMap&layers=india_eo_stack"
-            "&bbox={bbox-epsg-3857}&width=256&height=256&srs=EPSG:3857&format=image/png"
-        ),
-        attr="ISRO Bhuvan", name="Bhuvan Satellite",
-    ).add_to(m)
-
-    folium.TileLayer(
-        tiles="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-        attr="CartoDB", name="Dark Map",
-    ).add_to(m)
+    m = folium.Map(location=[KOLLAM_LAT, KOLLAM_LON], zoom_start=8)
 
     for district, (lat, lon) in KERALA_DISTRICTS.items():
         pred_cls = 0
@@ -448,14 +434,10 @@ def build_kerala_map(predictions: Optional[Dict] = None, selected_district: str 
             fill_color=color,
             fill_opacity=0.85,
             weight=3 if is_selected else 1,
-            popup=folium.Popup(
-                f"<b>{district}</b><br>Status: {label}",
-                max_width=180,
-            ),
+            popup=folium.Popup(f"<b>{district}</b><br>Status: {label}", max_width=180),
             tooltip=f"{district}: {label}",
         ).add_to(m)
 
-    folium.LayerControl().add_to(m)
     return m
 
 
