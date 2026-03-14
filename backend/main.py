@@ -86,7 +86,7 @@ class FloodNetONNX:
         self._warmup()
 
     def _warmup(self):
-        dummy_img = np.zeros((1, 1, IMG_SIZE, IMG_SIZE), dtype=np.float32)
+        dummy_img = np.zeros((1, 3, IMG_SIZE, IMG_SIZE), dtype=np.float32)
         dummy_wx = np.zeros((1, 10), dtype=np.float32)
         self.run(dummy_img, dummy_wx)
         logger.info("ONNX warmup complete")
@@ -99,7 +99,7 @@ class FloodNetONNX:
 
     @property
     def latency_ms(self) -> float:
-        img = np.random.rand(1, 1, IMG_SIZE, IMG_SIZE).astype(np.float32)
+        img = np.random.rand(1, 3, IMG_SIZE, IMG_SIZE).astype(np.float32)
         wx = np.random.rand(1, 10).astype(np.float32)
         t0 = time.perf_counter()
         for _ in range(10):
@@ -111,27 +111,15 @@ class FloodNetONNX:
 # IMAGE PREPROCESSING
 # ─────────────────────────────────────────────────────────
 def preprocess_image(image_bytes: bytes) -> np.ndarray:
-    """
-    Convert uploaded image bytes → (1, 1, 256, 256) float32 ONNX input.
-    Handles RGB satellite images and grayscale SAR.
-    """
     try:
         img = Image.open(io.BytesIO(image_bytes))
-        # Convert to grayscale (SAR-like)
-        img = img.convert("L").resize((IMG_SIZE, IMG_SIZE), Image.BILINEAR)
-        arr = np.array(img, dtype=np.float32)
-
-        # SAR log normalization
-        arr = np.clip(arr, 1.0, None)
-        arr = np.log10(arr + 1e-6)
-        arr = (arr - arr.min()) / (arr.max() - arr.min() + 1e-8)
-
-        # Z-score with SAR stats
-        arr = (arr - 0.33) / 0.22
-        arr = np.clip(arr, -5.0, 5.0)
-
-        return arr[np.newaxis, np.newaxis, :, :].astype(np.float32)
-
+        img = img.convert("RGB").resize((IMG_SIZE, IMG_SIZE), Image.BILINEAR)
+        arr = np.array(img, dtype=np.float32) / 255.0
+        mean = np.array([0.485, 0.456, 0.406])
+        std  = np.array([0.229, 0.224, 0.225])
+        arr  = (arr - mean) / (std + 1e-8)
+        arr  = np.clip(arr, -5, 5).transpose(2, 0, 1)  # (3,256,256)
+        return arr[np.newaxis].astype(np.float32)       # (1,3,256,256)
     except Exception as e:
         raise HTTPException(400, f"Image preprocessing failed: {str(e)}")
 
@@ -376,13 +364,13 @@ async def predict_weather_only(
     """
     # Generate synthetic SAR-like image from rainfall
     rain_normalized = min(weather.rainfall_mm / 200.0, 1.0)
-    synthetic_sar = np.random.normal(
+    syn = np.random.normal(   
         1.0 - rain_normalized * 0.7,
-        0.1 + rain_normalized * 0.15,
+        0.1,
         (IMG_SIZE, IMG_SIZE),
     ).clip(0, 1).astype(np.float32)
-    synthetic_sar = (synthetic_sar - 0.33) / 0.22
-    image_np = synthetic_sar[np.newaxis, np.newaxis, :, :].astype(np.float32)
+    syn_rgb = np.stack([syn, syn, syn], axis=0)
+    image_np = syn_rgb[np.newaxis].astype(np.float32)
 
     weather_np = preprocess_weather(weather.dict())
     return _run_inference(image_np, weather_np, weather.lat, weather.lon)
@@ -405,13 +393,13 @@ async def batch_predict(
                 img_bytes = base64.b64decode(request.image_base64_list[i])
                 image_np = preprocess_image(img_bytes)
             except Exception:
-                image_np = np.zeros((1, 1, IMG_SIZE, IMG_SIZE), dtype=np.float32)
+                image_np = np.zeros((1, 3, IMG_SIZE, IMG_SIZE), dtype=np.float32)
         else:
             # Weather-only fallback
             rain = item.rainfall_mm / 200.0
             syn = np.random.normal(1 - rain * 0.7, 0.1, (IMG_SIZE, IMG_SIZE)).clip(0, 1).astype(np.float32)
-            syn = (syn - 0.33) / 0.22
-            image_np = syn[np.newaxis, np.newaxis].astype(np.float32)
+            syn_rgb = np.stack([syn, syn, syn], axis=0)
+            image_np = syn_rgb[np.newaxis].astype(np.float32)
 
         weather_np = preprocess_weather(item.dict())
         result = _run_inference(image_np, weather_np, item.lat, item.lon)
