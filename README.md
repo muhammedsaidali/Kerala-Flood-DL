@@ -1,3 +1,12 @@
+---
+title: Kerala Flood AI
+emoji: 🌊
+colorFrom: blue
+colorTo: cyan
+sdk: docker
+app_file: app.py
+pinned: false
+---
 # 🌊 Kerala Flood Damage Assessment System
 
 > **Multi-modal Deep Learning system for real-time flood damage classification using aerial imagery and weather data.**
