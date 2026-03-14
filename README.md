@@ -2,7 +2,7 @@
 title: Kerala Flood AI
 emoji: 🌊
 colorFrom: blue
-colorTo: cyan
+colorTo: indigo
 sdk: docker
 app_file: app.py
 pinned: false
