@@ -19,6 +19,13 @@ pinned: false
 
 ---
 
+## 🚀 Live Demo
+
+[![Hugging Face Spaces](https://img.shields.io/badge/🤗%20Hugging%20Face-Spaces-blue)](https://huggingface.co/spaces/saidali313/Kerala-Flood-AI)
+[![GitHub](https://img.shields.io/badge/GitHub-Kerala--Flood--DL-black?logo=github)](https://github.com/muhammedsaidali/Kerala-Flood-DL)
+
+**[👉 Try the live demo here](https://huggingface.co/spaces/saidali313/Kerala-Flood-AI)**
+
 ## 📌 Overview
 
 A production-grade end-to-end ML system that classifies flood damage severity from aerial/satellite imagery combined with real-time weather data. Built as a portfolio project demonstrating real ML engineering skills — from data pipeline to ONNX deployment.
